@@ -1,32 +1,66 @@
-from flask import Flask, request, abort, session
+from flask import Flask, request, abort, session, jsonify, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask import Blueprint
 from models import User, db
 from config import ApplicationConfig
 from flask_bcrypt import Bcrypt
 from flask_session import Session
-from flask.json import jsonify
+from flask_cors import CORS, cross_origin
+
+
+import os
 
 app = Flask(__name__)
-bcrypt = Bcrypt(app)
-server_session = Session()
-server_session.init_app(app)
-
 app.config.from_object(ApplicationConfig)
-app.secret_key = "ljbkggbyb5"
 
+bcrypt = Bcrypt(app)
+server_session = Session(app)
 db.init_app(app)
+CORS(app, supports_credentials=True)
+
 with app.app_context():
     db.create_all()
 
 
+# ROUTES
+
+# USER INFORMATION ROUTE
+@app.route("/user", methods=['POST'])
+def get_current_user():
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = User.query.filter_by(id=user_id).first()
+    return jsonify({
+        "id": user.id,
+        "email": user.email
+    })
+
+
+@app.route("/user", methods=['GET'])
+def get_current_user_info():
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = User.query.filter_by(id=user_id).first()
+    return jsonify({
+        "id": user.id,
+        "email": user.email
+    })
+
+
+# REGISTER ROUTE
 @app.route("/register", methods=["POST"])
 def register_user():
     email = request.json["email"]
     password = request.json["password"]
     user_exists = User.query.filter_by(email=email).first() is not None
     if user_exists:
-        return jsonify({"error": "User already exists"})
+        return Response("{'a':'b'}", status=201, mimetype='application/json')
     hashed_password = bcrypt.generate_password_hash(password)
     new_user = User(email=email, password=hashed_password)
     db.session.add(new_user)
@@ -35,6 +69,8 @@ def register_user():
         "id": new_user.id,
         "email": new_user.email
     })
+
+# LOGIN ROUTE
 
 
 @app.route("/login", methods=["POST"])
@@ -52,6 +88,15 @@ def login_user():
         "email": user.email
     })
 
+# LOG OUT
+
+
+@app.route("/logout", methods=["POST"])
+def logout_user():
+    session.pop("user_id")
+    return "200"
+
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.debug = True
+    app.run()

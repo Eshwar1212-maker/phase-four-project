@@ -3,11 +3,7 @@
 @tailwind utilities;
 
 
-body {
-    background-image: url('../src/assets/background.jpg');
 
-
-  }
   
   /* Adjust the background position and size for larger
   
